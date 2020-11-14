@@ -15,6 +15,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
+from io import BytesIO
 import os
 
 import logging
@@ -25,28 +26,27 @@ from PIL import Image
 
 BUCKET_NAME = os.environ['BUCKET_NAME']
 
-s3_resource = boto3.resource('s3')
-bucket = s3_resource.Bucket(BUCKET_NAME)
+s3_client = boto3.client('s3')
 logger = logging.getLogger(__name__)
 
 
 class DataGenerator(Dataset):
 
     def __init__(self, jobs, transform):
-        self.img_name_list = []
-        self.img_label_list = []
         self.transform = transform
-        # self.img_directory = img_dir
         self.jobs = jobs
 
     def __getitem__(self, index):
+        print(f'Index: {index}')
         key = self.jobs[index]['Key']
         logger.info(f'Fetching {key}')
-        fileobj = bucket.download_fileobj(key)['Fileobj']
-        image_data = Image.open(fileobj).convert('RGB')
+        obj = BytesIO()
+        s3_client.download_fileobj(Bucket=BUCKET_NAME, Key=key, Fileobj=obj)
+        obj.seek(0)
+        image_data = Image.open(obj).convert('RGB')
         image_data = self.transform(image_data)
         # image_label= torch.FloatTensor(self.img_label_list[index])
-        image_label = self.jobs[index]['Label']
+        image_label = int(self.jobs[index]['Label'])
         return (image_data, image_label, key)
 
     def __len__(self):

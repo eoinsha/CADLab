@@ -19,19 +19,13 @@ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 from __future__ import print_function
 from __future__ import division
 
-import matplotlib.pyplot as plt
 import os
 import numpy as np
 import torch
 import torch.nn as nn
 from torchvision import models, transforms
-# from sklearn.metrics import roc_auc_score
-# from PIL import Image
-# import time
 
 from torch.utils.data import DataLoader
-# from sklearn.metrics import roc_auc_score, roc_curve, auc
-from sklearn import metrics
 from CXR_Data_Generator import DataGenerator
 
 import matplotlib as mpl
@@ -50,13 +44,14 @@ model = models.__dict__[arch](pretrained=True)
 num_ftrs = model.classifier.in_features
 model.classifier = nn.Linear(num_ftrs, num_class)
 
-model = model.cuda()
+# model = model.cuda()
 
 model_path = f'./trained_models_nih/{arch}_{img_size}_{batch_size}_{learning_rate}'
 split_file_dir = './dataset_split'
 split_name = 'test'
 splits = [split_name]
-model.load_state_dict(torch.load(model_path)['state_dict'])
+model.load_state_dict(torch.load(
+    model_path, map_location=torch.device('cpu'))['state_dict'])
 split_file_suffix = '_attending_rad.txt' if test_labels == 'att' else '_rad_consensus_voted3.txt'
 split_files = {}
 split_test = os.path.join(split_file_dir, 'test' + split_file_suffix)
@@ -81,7 +76,6 @@ def run_test(jobs):
     dataloaders[split_name] = dataLoaderTest
 
     print('Number of testing CXR images: {}'.format(len(datasetTest)))
-    dataset_sizes = {split_name: len(datasetTest)}
 
     # -------------------- TESTING -------------------
     model.eval()
@@ -115,7 +109,8 @@ def run_test(jobs):
             score_np = score.data.cpu().numpy()
             preds = score > 0.5
             preds_np = preds.data.cpu().numpy()
-            preds = preds.type(torch.cuda.LongTensor)
+            # preds = preds.type(torch.cuda.LongTensor)
+            preds = preds.type(torch.LongTensor)
 
             labels_auc = labels_auc.data.cpu().numpy()
             outputs = outputs.data.cpu().numpy()
@@ -133,42 +128,14 @@ def run_test(jobs):
             # labels = labels.type(torch.cuda.FloatTensor)
             # add for BCE loss
             running_corrects += torch.sum(preds.data == labels.data)
-
-    acc = np.float(running_corrects) / dataset_sizes[split_name]
-    auc = metrics.roc_auc_score(np.array(label_list), np.array(output_list), average=None)
-    # print(auc)
-    fpr, tpr, _ = metrics.roc_curve(np.array(label_list), np.array(output_list))
-    roc_auc = metrics.auc(fpr, tpr)
-
-    ap = metrics.average_precision_score(np.array(label_list), np.array(output_list))
-
-    tn, fp, fn, tp = metrics.confusion_matrix(label_list, preds_list).ravel()
-
-    recall = tp/(tp+fn)
-    precision = tp/(tp+fp)
-    f1 = 2*precision*recall/(precision+recall)
-    sensitivity = recall
-    specificity = tn/(tn+fp)
-    PPV = tp/(tp+fp)
-    NPV = tn/(tn+fn)
-    print('Test Accuracy: {0:.4f}  Test AUC: {1:.4f}  Test_AP: {2:.4f}'.format(
-        acc, auc, ap))
-    print('TP: {0:}  FP: {1:}  TN: {2:}  FN: {3:}'.format(tp, fp, tn, fn))
-    print('Sensitivity: {0:.4f}  Specificity: {1:.4f}'.format(
-        sensitivity, specificity))
-    print('Precision: {0:.2f}%  Recall: {1:.2f}%  F1: {2:.4f}'.format(
-        precision*100, recall*100, f1))
-    print('PPV: {0:.4f}  NPV: {1:.4f}'.format(PPV, NPV))
-    # Plot all ROC curves
-    plt.figure()
-    plt.plot(fpr, tpr, color='darkorange', lw=2,
-             label='ROC curve (area = %0.4f)' % roc_auc)
-    plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
-    plt.xlim([0.0, 1.0])
-    plt.ylim([0.0, 1.0])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('ROC curve of abnormal/normal classification: '+arch)
-    plt.legend(loc="lower right")
-    plt.savefig(f'ROC_abnormal_normal_cls_{arch}_{test_labels}.pdf', bbox_inches='tight')
-    plt.show()
+    # label_list, output_list - [[float,]]
+    # running_corrects - tensor(long)
+    # preds_list [[bool, ]]
+    res = {
+        'jobs': jobs,
+        'label_list': label_list,
+        'output_list': output_list,
+        'preds_list': preds_list,
+        'running_corrects': np.float(running_corrects),
+    }
+    return res
