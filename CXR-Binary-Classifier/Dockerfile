@@ -1,11 +1,11 @@
-FROM continuumio/miniconda
+FROM python:3.8-buster
 
 RUN mkdir /src
 WORKDIR /src
 
-COPY environment.yml /src
-RUN conda env create -f environment.yml
+COPY requirements.txt /src
+RUN python3 -m pip install --no-cache-dir -r requirements.txt
 COPY trained_models_nih/ /src/trained_models_nih/
 COPY *.py /src/
 
-ENTRYPOINT ["conda", "run", "-n", "cxr-bin-cls", "python3", "-m", "run"]
+ENTRYPOINT ["python3", "-m", "run"]
