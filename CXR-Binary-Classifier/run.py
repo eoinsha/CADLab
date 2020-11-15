@@ -14,4 +14,5 @@ logger = logging.getLogger(__name__)
 args = parser.parse_args()
 logging.info(f'Running with args {args}')
 jobs = [{'Key': args.key, 'Label': args.label}]
-run_test(jobs)
+result = run_test(jobs)
+print(result)
