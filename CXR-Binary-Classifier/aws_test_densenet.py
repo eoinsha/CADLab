@@ -20,7 +20,6 @@ from __future__ import print_function
 from __future__ import division
 
 import os
-import numpy as np
 import torch
 import torch.nn as nn
 from torchvision import models, transforms
@@ -82,29 +81,15 @@ def run_test(jobs):
 
     # -------------------- TESTING -------------------
     model.eval()
-    running_corrects = 0
     output_list = []
-    label_list = []
     preds_list = []
+    scores_list = []
 
     with torch.no_grad():
         # Iterate over data.
         for data in dataloaders[split_name]:
-            inputs, labels, img_names = data
+            inputs, img_names = data
 
-            labels_auc = labels
-            labels_print = labels
-            labels_auc = labels_auc.type(torch.FloatTensor)
-            labels = labels.type(torch.LongTensor)  # add for BCE loss
-
-            # TODO: wrap them in Variable
-            # inputs = inputs.cuda(gpu_id, non_blocking=True)
-            # labels = labels.cuda(gpu_id, non_blocking=True)
-            # labels_auc = labels_auc.cuda(gpu_id, non_blocking=True)
-
-            labels = labels.view(labels.size()[0], -1)  # add for BCE loss
-            labels_auc = labels_auc.view(
-                labels_auc.size()[0], -1)  # add for BCE loss
             # forward
             outputs = model(inputs)
             # _, preds = torch.max(outputs.data, 1)
@@ -115,30 +100,20 @@ def run_test(jobs):
             # preds = preds.type(torch.cuda.LongTensor)
             preds = preds.type(torch.LongTensor)
 
-            labels_auc = labels_auc.data.cpu().numpy()
             outputs = outputs.data.cpu().numpy()
 
             for j in range(len(img_names)):
-                print(str(img_names[j]) + ': ' + str(score_np[j]
-                                                     ) + ' GT: ' + str(labels_print[j]))
+                print(str(img_names[j]) + ': ' + str(score_np[j]))
 
             for i in range(outputs.shape[0]):
                 output_list.append(outputs[i].tolist())
-                label_list.append(labels_auc[i].tolist())
+                scores_list.append(score_np[i].tolist())
                 preds_list.append(preds_np[i].tolist())
 
-            # running_corrects += torch.sum(preds == labels.data)
-            # labels = labels.type(torch.cuda.FloatTensor)
-            # add for BCE loss
-            running_corrects += torch.sum(preds.data == labels.data)
-    # label_list, output_list - [[float,]]
-    # running_corrects - tensor(long)
-    # preds_list [[bool, ]]
     res = {
         'jobs': jobs,
-        'label_list': label_list,
         'output_list': output_list,
         'preds_list': preds_list,
-        'running_corrects': np.float(running_corrects),
+        'scores_list': scores_list,
     }
     return res

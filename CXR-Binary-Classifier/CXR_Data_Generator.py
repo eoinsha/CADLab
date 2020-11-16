@@ -44,9 +44,7 @@ class DataGenerator(Dataset):
         obj.seek(0)
         image_data = Image.open(obj).convert('RGB')
         image_data = self.transform(image_data)
-        # image_label= torch.FloatTensor(self.img_label_list[index])
-        image_label = int(self.jobs[index]['Label'])
-        return (image_data, image_label, key)
+        return (image_data, key)
 
     def __len__(self):
         return len(self.jobs)
