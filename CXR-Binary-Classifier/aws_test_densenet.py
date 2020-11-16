@@ -36,8 +36,12 @@ img_size = int(os.getenv('IMG_SIZE', 256))
 crop_size = int(os.getenv('CROP_SIZE', 224))
 epoch = int(os.getenv('EPOCH', 50))
 batch_size = int(os.getenv('BATCH_SIZE', 64))
+# num_workers is set to 0 by default to turn of /dev/shm usage.
+# This will make loading less efficient when processing multiple images.
+num_workers = int(os.getenv('NUM_DATA_WORKERS', 0))
 learning_rate = float(os.getenv('LEARNING_RATE', 0.001))
 test_labels = os.getenv('TEST_LABELS', 'att')
+model_path = os.getenv('MODEL_PATH', './trained_models_nih')
 num_class = 1
 
 model = models.__dict__[arch](pretrained=True)
@@ -46,7 +50,7 @@ model.classifier = nn.Linear(num_ftrs, num_class)
 
 # model = model.cuda()
 
-model_path = f'./trained_models_nih/{arch}_{img_size}_{batch_size}_{learning_rate}'
+model_path = f'{model_path}/{arch}_{img_size}_{batch_size}_{learning_rate}'
 split_file_dir = './dataset_split'
 split_name = 'test'
 splits = [split_name]
@@ -55,7 +59,6 @@ model.load_state_dict(torch.load(
 split_file_suffix = '_attending_rad.txt' if test_labels == 'att' else '_rad_consensus_voted3.txt'
 split_files = {}
 split_test = os.path.join(split_file_dir, 'test' + split_file_suffix)
-gpu_id = 'cpu'  # TODO
 
 
 def run_test(jobs):
@@ -70,7 +73,7 @@ def run_test(jobs):
     # -------------------- SETTINGS: DATASET BUILDERS -------------------
     datasetTest = DataGenerator(jobs, transform=data_transforms[split_name])
     dataLoaderTest = DataLoader(dataset=datasetTest, batch_size=batch_size,
-                                shuffle=False, num_workers=32, pin_memory=True)
+                                shuffle=False, num_workers=num_workers, pin_memory=True)
 
     dataloaders = {}
     dataloaders[split_name] = dataLoaderTest

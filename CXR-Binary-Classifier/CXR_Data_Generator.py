@@ -37,7 +37,6 @@ class DataGenerator(Dataset):
         self.jobs = jobs
 
     def __getitem__(self, index):
-        print(f'Index: {index}')
         key = self.jobs[index]['Key']
         logger.info(f'Fetching {key}')
         obj = BytesIO()
